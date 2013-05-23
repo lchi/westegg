@@ -1,0 +1,26 @@
+{
+ "name": "westegg",
+ "description": "A generic file cache that reloads file data on filesystem changes.",
+ "version": "0.0.1",
+ "directories": {
+  "lib": "./lib"
+ },
+ "main": "index.js",
+ "author": "Lucas Chi <chi.lucas@gmail.com>",
+ "dependencies": {
+  "coffee-script": "*",
+ },
+ "devDependencies": {
+  "assert":        "*"
+ },
+ "repository": {
+  "type": "git",
+  "url": "http://github.com/lchi/westegg"
+ },
+ "licenses": [
+  {
+   "type": "GPLv3",
+   "url": "http://github.com/lchi/westegg/raw/master/LICENSE"
+  }
+ ]
+}
