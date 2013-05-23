@@ -22,9 +22,14 @@ exports.Cache = class Cache
       else
         console.log "westegg: #{util.inspect o}"
 
+  unload: (filename) ->
+    realpath = path.normalize path.resolve @baseDir, filename
+
+    @_clearFileCache realpath
+    @_clearFsErrorCache realpath
+
   load: (filename, options, cb) ->
     start_time           = Date.now()
-
     options              = options or {}
     realpath             = path.normalize path.resolve @baseDir, filename
 
@@ -117,4 +122,5 @@ exports.Cache = class Cache
         @_log "fs.watch() failed for #{filename}; settings fsErrorCache = true"
         @fsErrorCache[filename] = Date.now()
 
+  _clearFileCache: (k) -> delete @fileCache[k]
   _clearFsErrorCache: (k) -> delete @fsErrorCache[k]
