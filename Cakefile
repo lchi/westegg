@@ -2,7 +2,6 @@
 fs            = require 'fs'
 
 task 'build', 'build the whole jam', (cb) ->
-  console.log "Building"
   files = fs.readdirSync 'src'
   files = ('src/' + file for file in files when file.match(/\.coffee$/))
   clearLibJs ->
@@ -13,6 +12,10 @@ task 'build', 'build the whole jam', (cb) ->
 task 'test', 'test server and browser support', (cb) ->
   console.log "Not implemented..."
   cb() if typeof cb is 'function'
+
+task 'clean', 'clear out all generated files', (cb) ->
+  clearLibJs ->
+    cb() if typeof cb is 'function'
 
 runCoffee = (args, cb) ->
   proc =  spawn 'coffee', args
