@@ -9,7 +9,7 @@ exports.Cache = class Cache
     @verbose              = options.verbose or false
     @defaultEncoding      = options.defaultEncoding or "utf8"
     @baseDir              = options.baseDir or "./"
-    @transform            = options.transform or ((r)->r)
+    @transform            = options.transform or ((r, cb)-> cb r)
     @missing_file_recheck = options.missing_file_recheck or 1000
 
     @fileCache          = {} # filename -> view
@@ -22,7 +22,7 @@ exports.Cache = class Cache
       else
         console.log "westegg: #{util.inspect o}"
 
-  load: (filename, options) ->
+  load: (filename, options, cb) ->
     start_time           = Date.now()
 
     options              = options or {}
@@ -30,16 +30,21 @@ exports.Cache = class Cache
 
     @_log "realpath: #{realpath}"
 
-    v = (@_fileCacheGet realpath) or (@_loadCacheAndMonitor realpath, options)
+    @_load realpath, options, (v) =>
+      if v and not @fsErrorCache[realpath]
+        [err, res] = [null, v]
+      else
+        [err, res] = ["Couldn't load #{realpath}", null]
 
-    if v and not @fsErrorCache[realpath]
-      [err, res] = [null, v]
+      @_log "#{realpath} load in #{Date.now() - start_time}ms"
+
+      cb [err, res]
+
+  _load: (filename, options, cb) ->
+    if (v = @_fileCacheGet filename)
+      return cb(v)
     else
-      [err, res] = ["Couldn't load #{realpath}", null]
-
-    @_log "#{realpath} load in #{Date.now() - start_time}ms"
-
-    return [err, res]
+      @_loadCacheAndMonitor filename, options, cb
 
   _fileCacheGet: (filename) ->
     if not @fileCache[filename]?
@@ -51,7 +56,7 @@ exports.Cache = class Cache
     else
       return null
 
-  _loadCacheAndMonitor: (filename, options) ->
+  _loadCacheAndMonitor: (filename, options, cb) ->
     previous_fs_err = @fsErrorCache[filename]?
     try
       fileData = fs.readFileSync filename, options.encoding or @defaultEncoding
@@ -63,10 +68,16 @@ exports.Cache = class Cache
 
     # if we hit an fs error and it already happened, just return that
     if not (@fsErrorCache[filename] and previous_fs_err and @fileCache[filename])
-      @fileCache[filename] = if fileData then @transform fileData else "Error loading #{filename}"
-      @_monitorForChanges filename, options
 
-    return @fileCache[filename]
+      if not fileData
+        @_monitorForChanges filename, options
+        return cb(@fileCache[filename] = "Error loading #{filename}")
+      else
+        @transform fileData, (transformedData) =>
+          @fileCache[filename] = transformedData
+          @_monitorForChanges filename, options
+
+          cb @fileCache[filename]
 
   _reloadFileInBkg: (filename, options) ->
     fs.readFile filename, 'utf8', (err, fileData) =>
@@ -78,7 +89,12 @@ exports.Cache = class Cache
         @_log "#{filename} updated and ready"
         @_clearFsErrorCache filename
 
-      @fileCache[filename] = if fileData then @transform fileData else "Error loading #{filename}"
+      if not fileData
+        @fileCache[filename] = "Error loading #{filename}"
+      else
+        @transform fileData, (transformedData) =>
+          @fileCache[filename] = transformedData
+          @_monitorForChanges filename, options
 
   _monitorForChanges: (filename, options) ->
     ###
