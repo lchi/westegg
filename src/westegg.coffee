@@ -1,4 +1,3 @@
-utils                 = require './utils'
 fs                    = require 'fs'
 path                  = require 'path'
 util                  = require 'util'
@@ -10,7 +9,7 @@ exports.Cache = class Cache
     @verbose              = options.verbose or false
     @defaultEncoding      = options.defaultEncoding or "utf8"
     @baseDir              = options.baseDir or "./"
-    @transform            = options.transform or (->)
+    @transform            = options.transform or ((r)->r)
     @missing_file_recheck = options.missing_file_recheck or 1000
 
     @fileCache          = {} # filename -> view
@@ -58,6 +57,7 @@ exports.Cache = class Cache
       fileData = fs.readFileSync filename, options.encoding or @defaultEncoding
       @_clearFsErrorCache filename
     catch e
+      @_log "#{e} when loading #{filename}"
       fileData = null
       @fsErrorCache[filename] = Date.now()
 
@@ -101,4 +101,4 @@ exports.Cache = class Cache
         @_log "fs.watch() failed for #{filename}; settings fsErrorCache = true"
         @fsErrorCache[filename] = Date.now()
 
-  _resetFsErrorCache: (k) -> delete @fsErrorCache[k]
+  _clearFsErrorCache: (k) -> delete @fsErrorCache[k]

@@ -1,1 +1,1 @@
-exports.Cache = require('./lib/engine').Cache
+exports.Cache = require('./lib/westegg').Cache
