@@ -9,7 +9,7 @@ exports.Cache = class Cache
     @verbose              = options.verbose or false
     @defaultEncoding      = options.defaultEncoding or "utf8"
     @baseDir              = options.baseDir or "./"
-    @transform            = options.transform or ((r, cb)-> cb r)
+    @transform            = options.transform or ((r, cb)-> cb null, r)
     @missing_file_recheck = options.missing_file_recheck or 1000
 
     @fileCache          = {} # filename -> view
@@ -80,11 +80,15 @@ exports.Cache = class Cache
         @_monitorForChanges filename, options
         return cb(@fileCache[filename] = "Error loading #{filename}")
       else
-        @transform fileData, (transformedData) =>
-          @fileCache[filename] = transformedData
-          @_monitorForChanges filename, options
+        @transform fileData, (err, transformedData) =>
+          if err
+            delete @fileCache[filename]
+            @fsErrorCache[filename] = Date.now()
+          else
+            ret = @fileCache[filename] = transformedData
+            @_monitorForChanges filename, options
 
-          cb @fileCache[filename]
+          cb ret
 
   _reloadFileInBkg: (filename, options) ->
     fs.readFile filename, 'utf8', (err, fileData) =>
@@ -99,9 +103,13 @@ exports.Cache = class Cache
       if not fileData
         @fileCache[filename] = "Error loading #{filename}"
       else
-        @transform fileData, (transformedData) =>
-          @fileCache[filename] = transformedData
-          @_monitorForChanges filename, options
+        @transform fileData, (err, transformedData) =>
+          if err
+            delete @fileCache[filename]
+            @fsErrorCache[filename] = Date.now()
+          else
+            @fileCache[filename] = transformedData
+            @_monitorForChanges filename, options
 
   _monitorForChanges: (filename, options) ->
     ###
