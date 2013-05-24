@@ -14,6 +14,7 @@ exports.Cache = class Cache
 
     @fileCache          = {} # filename -> view
     @fsErrorCache       = {} # filename -> timestamp last failed
+    @fsWatchers         = {} # filename -> fswatcher or null
 
   _log: (o) ->
     if @verbose
@@ -27,8 +28,11 @@ exports.Cache = class Cache
 
     @_clearFileCache realpath
     @_clearFsErrorCache realpath
+    @_clearFsWatcher realpath
 
-  unloadAll: () -> c = {} for c in [@fileCache, @fsErrorCache]
+  unloadAll: () ->
+    v.close() for _, v of @fsWatchers
+    c = {} for c in [@fileCache, @fsErrorCache, @fsWatchers]
 
   load: (filename, cb, options) ->
     start_time           = Date.now()
@@ -121,9 +125,10 @@ exports.Cache = class Cache
       fsw = null
       try
         @_log "#{filename} starting fs.watch()"
-        fsw = fs.watch filename, {persistent: true}, (change) =>
+        @fsWatchers[filename] = fsw = fs.watch filename, {persistent: true}, (change) =>
           @_log "#{filename} closing fs.watch()"
           fsw.close()
+          delete @fsWatchers[filename]
           @_monitorForChanges filename, options
           @_reloadFileInBkg filename, options
       catch e
@@ -132,3 +137,4 @@ exports.Cache = class Cache
 
   _clearFileCache: (k) -> delete @fileCache[k]
   _clearFsErrorCache: (k) -> delete @fsErrorCache[k]
+  _clearFsWatcher: (k) -> delete @fsWatchers[k]
