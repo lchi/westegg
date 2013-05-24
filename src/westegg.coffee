@@ -28,6 +28,8 @@ exports.Cache = class Cache
     @_clearFileCache realpath
     @_clearFsErrorCache realpath
 
+  unloadAll: () -> c = {} for c in [@fileCache, @fsErrorCache]
+
   load: (filename, options, cb) ->
     start_time           = Date.now()
     options              = options or {}
