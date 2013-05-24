@@ -30,26 +30,24 @@ exports.Cache = class Cache
 
   unloadAll: () -> c = {} for c in [@fileCache, @fsErrorCache]
 
-  load: (filename, options, cb) ->
+  load: (filename, cb, options) ->
     start_time           = Date.now()
     options              = options or {}
     realpath             = path.normalize path.resolve @baseDir, filename
 
     @_log "realpath: #{realpath}"
 
-    @_load realpath, options, (v) =>
-      if v and not @fsErrorCache[realpath]
-        [err, res] = [null, v]
-      else
+    @_load realpath, options, (err, res) =>
+      if err or not res
         [err, res] = ["Couldn't load #{realpath}", null]
 
       @_log "#{realpath} load in #{Date.now() - start_time}ms"
 
-      cb [err, res]
+      cb err, res
 
   _load: (filename, options, cb) ->
     if (v = @_fileCacheGet filename)
-      return cb(v)
+      return cb(null, v)
     else
       @_loadCacheAndMonitor filename, options, cb
 
@@ -78,22 +76,22 @@ exports.Cache = class Cache
 
       if not fileData
         @_monitorForChanges filename, options
-        return cb(@fileCache[filename] = "Error loading #{filename}")
+        return cb(@fileCache[filename] = "Error loading #{filename}", null)
       else
         @transform fileData, (err, transformedData) =>
           if err
             delete @fileCache[filename]
             @fsErrorCache[filename] = Date.now()
           else
-            ret = @fileCache[filename] = transformedData
+            @fileCache[filename] = transformedData
             @_monitorForChanges filename, options
 
-          cb ret
+          cb err, @fileCache[filename]
 
   _reloadFileInBkg: (filename, options) ->
     fs.readFile filename, 'utf8', (err, fileData) =>
       if err
-        @_log "Error when re-reading #{filename} in background"
+        @_log "Error when re-reading #{filename} in background: #{err}"
         @fsErrorCache[filename] = Date.now()
         fileData = null
       else
