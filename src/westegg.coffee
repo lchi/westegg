@@ -76,11 +76,13 @@ exports.Cache = class Cache
       @fsErrorCache[filename] = Date.now()
 
     # if we hit an fs error and it already happened, just return that
-    if not (@fsErrorCache[filename] and previous_fs_err and @fileCache[filename])
-
+    if (@fsErrorCache[filename] and previous_fs_err and @fileCache[filename])
+      cb null, @fileCache[filename]
+    else
       if not fileData
+        @_log "no filedata found for #{filename}"
         @_monitorForChanges filename, options
-        return cb(@fileCache[filename] = "Error loading #{filename}", null)
+        cb(@fileCache[filename] = "Error loading #{filename}", null)
       else
         @transform fileData, (err, transformedData) =>
           if err
